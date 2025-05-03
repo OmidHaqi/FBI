@@ -1,6 +1,6 @@
 # ForceBindIP Version 2
 
-ForceBindIP Version 2 is a tool that allows you to force applications to use a specific network interface by binding their sockets to a particular IP address or by specifying an interface GUID. Built as a rewrite of the original ForceBindIP in C++ using the MinHook library, it is useful for testing network configurations, ensuring applications use a specific network path, or bypassing certain network restrictions.
+ForceBindIP Version 2 is a tool that allows you to force applications to use a specific network interface by binding their sockets to a particular IP address or by specifying an interface GUID. Built as a rewrite of the original [ForceBindIP](https://r1ch.net/projects/forcebindip) in C++ using the MinHook library, it is useful for testing network configurations, ensuring applications use a specific network path, or bypassing certain network restrictions.
 
 ## Features
 
@@ -19,14 +19,6 @@ ForceBindIP Version 2 is a tool that allows you to force applications to use a s
 - Compiled with Visual Studio 2022.
 
 - Requires the MinHook library for hooking Winsock functions.
-
-## Building the Project
-
-1. Install Visual Studio 2022 with C++ development tools.
-
-2. Clone or download the MinHook library and build it, or use prebuilt binaries.
-
-3. Open the solution in Visual Studio, configure the include and library directories for MinHook, and build the project.
 
 ## Usage
 
@@ -102,7 +94,7 @@ To find your network interface GUIDs and their associated IP addresses, you can:
 
 - Use `ipconfig /all` in the command prompt.
 
-- Build `guid.cpp` or run the provided `forcebindipguidfinder.exe` which lists active adapters.
+- ~~Build `guid.cpp` or run the provided `forcebindipguidfinder.exe` which lists active adapters.~~ use `-l` to get list of all working GUID and IPs
 
 ## Known Issues
 
