@@ -30,13 +30,23 @@ injector.exe [options] <program> [args...]
 
 ### Options
 
-- `-v`: Enable verbose mode for detailed logging.
+- `-v`: Enable verbose output in terminal for injector and debug output from DLL
+
+- `-o`: Save DLL logs to the specified file (does not affect terminal output)
+
+- `-l`: List available network interfaces with GUIDs and IP addresses
 
 - `-4 <IPv4>`: Bind to the specified IPv4 address (e.g., `192.168.1.1`).
 
 - `-6 <IPv6>`: Bind to the specified IPv6 address (e.g., `fdfe:dcba:9876::1`).
 
 - `-i <GUID>`: Bind to the network interface with the specified GUID (without curly braces, e.g., `11111111-2222-3333-4444-555555555555`).
+
+- `-t`: Bind TCP sockets (default if no binding specified)
+
+- `-u`: Bind UDP sockets (default if no binding specified)
+
+- `-p`: Bind to the specified port (requires -t or -u)
 
 ### Notes on Binding
 
