@@ -1,6 +1,6 @@
 # ForceBindIP Version 2
 
-ForceBindIP Version 2 is a tool that allows you to force applications to use a specific network interface by binding their sockets to a particular IP address or by specifying an interface GUID. Built as a rewrite of the original ForceBindIP in C++ using the MinHook library, it is useful for testing network configurations, ensuring applications use a specific network path, or bypassing certain network restrictions.
+ForceBindIP Version 2 is a tool that allows you to force applications to use a specific network interface by binding their sockets to a particular IP address or by specifying an interface GUID. Built as a rewrite of the original [ForceBindIP](https://r1ch.net/projects/forcebindip) in C++ using the MinHook library, it is useful for testing network configurations, ensuring applications use a specific network path, or bypassing certain network restrictions.
 
 ## Features
 
@@ -20,14 +20,6 @@ ForceBindIP Version 2 is a tool that allows you to force applications to use a s
 
 - Requires the MinHook library for hooking Winsock functions.
 
-## Building the Project
-
-1. Install Visual Studio 2022 with C++ development tools.
-
-2. Clone or download the MinHook library and build it, or use prebuilt binaries.
-
-3. Open the solution in Visual Studio, configure the include and library directories for MinHook, and build the project.
-
 ## Usage
 
 Run the injector with the following syntax:
@@ -38,13 +30,23 @@ injector.exe [options] <program> [args...]
 
 ### Options
 
-- `-v`: Enable verbose mode for detailed logging.
+- `-v`: Enable verbose output in terminal for injector and debug output from DLL
+
+- `-o`: Save DLL logs to the specified file (does not affect terminal output)
+
+- `-l`: List available network interfaces with GUIDs and IP addresses
 
 - `-4 <IPv4>`: Bind to the specified IPv4 address (e.g., `192.168.1.1`).
 
 - `-6 <IPv6>`: Bind to the specified IPv6 address (e.g., `fdfe:dcba:9876::1`).
 
 - `-i <GUID>`: Bind to the network interface with the specified GUID (without curly braces, e.g., `11111111-2222-3333-4444-555555555555`).
+
+- `-t`: Bind TCP sockets (default if no binding specified)
+
+- `-u`: Bind UDP sockets (default if no binding specified)
+
+- `-p`: Bind to the specified port (requires -t or -u)
 
 ### Notes on Binding
 
@@ -102,7 +104,7 @@ To find your network interface GUIDs and their associated IP addresses, you can:
 
 - Use `ipconfig /all` in the command prompt.
 
-- Build `guid.cpp` or run the provided `forcebindipguidfinder.exe` which lists active adapters.
+- ~~Build `guid.cpp` or run the provided `forcebindipguidfinder.exe` which lists active adapters.~~ use `-l` to get list of all working GUID and IPs
 
 ## Known Issues
 
