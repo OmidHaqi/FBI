@@ -2,6 +2,19 @@
 
 #include "helper.h"
 
+#include <winsock2.h>
+#include <ws2tcpip.h>
+#include <iphlpapi.h>
+
+#include <tlhelp32.h>
+#include <string>
+#include <cstring>
+#include <algorithm>
+#include <cwctype>
+#include <string>
+#include <conio.h>
+#include <iostream>
+
 static bool verbose = false;
 
 bool is_link_local_ipv6(const IN6_ADDR &addr)
@@ -405,7 +418,8 @@ int _tmain(int argc, TCHAR *argv[])
     if (dirEnd)
     {
         *dirEnd = _T('\0');
-        _tcscat_s(dllPath, MAX_PATH, _T("\\forcebindipdll.dll"));
+        _tcscat_s(dllPath, MAX_PATH, _T("\\forcebindipdllx86.dll"));
+        //_tcscat_s(dllPath, MAX_PATH, _T("\\forcebindipdllx64.dll"));
         if (verbose)
             _tprintf(_T("DLL path: %s\n"), dllPath);
     }
@@ -462,7 +476,6 @@ int _tmain(int argc, TCHAR *argv[])
 
     return 0;
 }
-
 /* TODO here
 
 -t Bind all TCP sockets.[DONE]
@@ -474,18 +487,18 @@ when using `-p`, you must also specify either `-t` or `-u` to define the socket 
 or the injector will automatically detect the port's socket type
 
 
-long term TODO
+long Term TODO
 
-we need to add a mechanism for certain applications, like FDM in my case now,
+We need to add a mechanism for certain applications, like FDM in my case now,
 to hook into the injector and allow it to exit cleanly. This mechanism should perform the following steps:
 inject the necessary data.
 validate the injection.
 exit the injector.
 
-this would enforce the target application to use the specified IP or GUID interface.
-however, there’s an issue: If we force the target application to use a particular IP or interface,
+This would enforce the target application to use the specified IP or GUID interface.
+However, there’s an issue: if we force the target application to use a particular IP or interface,
 and something happens (e.g., the IP or interface goes down and the status shows as "Down"), we need to handle this situation gracefully.
-to address this, we plan to introduce an option like `-k` for a kill switch. When the IP or interface goes down,
+To address this, we plan to introduce an option like -k for a kill switch. When the IP or interface goes down,
 this will force the application to stop using any other IPs or interfaces.
 
 */
