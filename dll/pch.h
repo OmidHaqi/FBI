@@ -10,7 +10,5 @@
 #include <string>
 #include <cstring>
 #include <iphlpapi.h>
-#include <stdarg.h>
-#include <stdio.h>
 
 #endif
