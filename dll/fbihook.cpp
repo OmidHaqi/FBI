@@ -1,9 +1,11 @@
 #include "pch.h"
 #include "MinHook.h"
+#include <stdarg.h>
+#include <stdio.h>
 
 static bool verbose = false;
-static SOCKADDR_IN g_preferred_ipv4_addr = {0};
-static SOCKADDR_IN6 g_preferred_ipv6_addr = {0};
+static SOCKADDR_IN g_preferred_ipv4_addr = { 0 };
+static SOCKADDR_IN6 g_preferred_ipv6_addr = { 0 };
 static DWORD g_interface_index = 0;
 static bool g_use_interface = false;
 static bool g_bind_tcp = false;
@@ -11,14 +13,15 @@ static bool g_bind_udp = false;
 static int g_bind_port = 0;
 static HANDLE log_file = INVALID_HANDLE_VALUE;
 
-typedef SOCKET(WSAAPI *pSocket)(int af, int type, int protocol);
-typedef int(WSAAPI *pBind)(SOCKET s, const struct sockaddr *addr, int namelen);
-typedef int(WSAAPI *pConnect)(SOCKET s, const struct sockaddr *name, int namelen);
-typedef int(WSAAPI *pSendTo)(SOCKET s, const char *buf, int len, int flags, const struct sockaddr *to, int tolen);
-typedef int(WSAAPI *pGetSockName)(SOCKET s, struct sockaddr *name, int *namelen);
-typedef SOCKET(WSAAPI *pWSASocket)(int af, int type, int protocol, LPWSAPROTOCOL_INFO lpProtocolInfo, GROUP g, DWORD dwFlags);
-typedef int(WSAAPI *pWSAConnect)(SOCKET s, const struct sockaddr *name, int namelen, LPWSABUF lpCallerData, LPWSABUF lpCalleeData, LPQOS lpSQOS, LPQOS lpGQOS);
-
+typedef SOCKET(WSAAPI* pSocket)(int af, int type, int protocol);
+typedef int(WSAAPI* pBind)(SOCKET s, const struct sockaddr* addr, int namelen);
+typedef int(WSAAPI* pConnect)(SOCKET s, const struct sockaddr* name, int namelen);
+typedef int(WSAAPI* pSendTo)(SOCKET s, const char* buf, int len, int flags, const struct sockaddr* to, int tolen);
+typedef int(WSAAPI* pGetSockName)(SOCKET s, struct sockaddr* name, int* namelen);
+typedef SOCKET(WSAAPI* pWSASocket)(int af, int type, int protocol, LPWSAPROTOCOL_INFO lpProtocolInfo, GROUP g, DWORD dwFlags);
+typedef int(WSAAPI* pWSAConnect)(SOCKET s, const struct sockaddr* name, int namelen, LPWSABUF lpCallerData, LPWSABUF lpCalleeData, LPQOS lpSQOS, LPQOS lpGQOS);
+typedef int(WSAAPI* pWSASendTo)(SOCKET s, LPWSABUF lpBuffers, DWORD dwBufferCount, LPDWORD lpNumberOfBytesSent, DWORD dwFlags, const struct sockaddr* lpTo, int iTolen, LPWSAOVERLAPPED lpOverlapped, LPWSAOVERLAPPED_COMPLETION_ROUTINE lpCompletionRoutine);
+static pWSASendTo original_WSASendTo = nullptr;
 static pSocket original_socket = nullptr;
 static pBind original_bind = nullptr;
 static pConnect original_connect = nullptr;
@@ -27,19 +30,19 @@ static pGetSockName original_getsockname = nullptr;
 static pWSASocket original_WSAsocket = nullptr;
 static pWSAConnect original_WSAConnect = nullptr;
 
-void log_message(const TCHAR *format, ...)
+void log_message(const TCHAR* format, ...)
 {
     va_list args;
     va_start(args, format);
     int len = _vscwprintf(format, args) + 1;
-    TCHAR *buffer = new TCHAR[len];
+    TCHAR* buffer = new TCHAR[len];
     _vstprintf_s(buffer, len, format, args);
     va_end(args);
 
     if (log_file != INVALID_HANDLE_VALUE)
     {
         int mb_len = WideCharToMultiByte(CP_UTF8, 0, buffer, -1, NULL, 0, NULL, NULL);
-        char *mb_buffer = new char[mb_len];
+        char* mb_buffer = new char[mb_len];
         WideCharToMultiByte(CP_UTF8, 0, buffer, -1, mb_buffer, mb_len, NULL, NULL);
         DWORD written;
         WriteFile(log_file, mb_buffer, mb_len - 1, &written, NULL);
@@ -54,7 +57,7 @@ void log_message(const TCHAR *format, ...)
     delete[] buffer;
 }
 
-std::basic_string<TCHAR> standardize_guid(const std::basic_string<TCHAR> &guid)
+std::basic_string<TCHAR> standardize_guid(const std::basic_string<TCHAR>& guid)
 {
     std::basic_string<TCHAR> clean_guid = guid;
     if (!clean_guid.empty() && clean_guid.front() == _T('{') && clean_guid.back() == _T('}'))
@@ -115,7 +118,6 @@ void parse_preferred_binding()
             }
         }
     }
-
     else if (GetEnvironmentVariable(_T("PREFERRED_INTERFACE"), buffer, 256) > 0)
     {
         std::basic_string<TCHAR> guid_str = standardize_guid(buffer);
@@ -123,7 +125,7 @@ void parse_preferred_binding()
             log_message(_T("Standardized GUID: %s\n"), guid_str.c_str());
 
         ULONG outBufLen = 15000;
-        PIP_ADAPTER_ADDRESSES pAddresses = (IP_ADAPTER_ADDRESSES *)malloc(outBufLen);
+        PIP_ADAPTER_ADDRESSES pAddresses = (IP_ADAPTER_ADDRESSES*)malloc(outBufLen);
         if (!pAddresses)
             return;
 
@@ -131,7 +133,7 @@ void parse_preferred_binding()
         if (dwRetVal == ERROR_BUFFER_OVERFLOW)
         {
             free(pAddresses);
-            pAddresses = (IP_ADAPTER_ADDRESSES *)malloc(outBufLen);
+            pAddresses = (IP_ADAPTER_ADDRESSES*)malloc(outBufLen);
             if (!pAddresses)
                 return;
             dwRetVal = GetAdaptersAddresses(AF_UNSPEC, GAA_FLAG_INCLUDE_PREFIX, NULL, pAddresses, &outBufLen);
@@ -157,7 +159,7 @@ void parse_preferred_binding()
                     {
                         if (pUnicast->Address.lpSockaddr->sa_family == AF_INET)
                         {
-                            sockaddr_in *sa_in = (sockaddr_in *)pUnicast->Address.lpSockaddr;
+                            sockaddr_in* sa_in = (sockaddr_in*)pUnicast->Address.lpSockaddr;
                             g_preferred_ipv4_addr.sin_addr = sa_in->sin_addr;
                             g_preferred_ipv4_addr.sin_family = AF_INET;
                             if (verbose)
@@ -169,7 +171,7 @@ void parse_preferred_binding()
                         }
                         else if (pUnicast->Address.lpSockaddr->sa_family == AF_INET6)
                         {
-                            sockaddr_in6 *sa_in6 = (sockaddr_in6 *)pUnicast->Address.lpSockaddr;
+                            sockaddr_in6* sa_in6 = (sockaddr_in6*)pUnicast->Address.lpSockaddr;
                             g_preferred_ipv6_addr.sin6_addr = sa_in6->sin6_addr;
                             g_preferred_ipv6_addr.sin6_family = AF_INET6;
                             if (verbose)
@@ -205,14 +207,14 @@ void parse_preferred_binding()
     }
 }
 
-static BOOL enforce_binding(SOCKET s, int family, const struct sockaddr *target)
+static BOOL enforce_binding(SOCKET s, int family, const struct sockaddr* target)
 {
-    SOCKADDR_STORAGE bind_addr = {0};
+    SOCKADDR_STORAGE bind_addr = { 0 };
     int bind_len;
 
     if (family == AF_INET && g_preferred_ipv4_addr.sin_addr.s_addr != 0)
     {
-        SOCKADDR_IN *sin = (SOCKADDR_IN *)&bind_addr;
+        SOCKADDR_IN* sin = (SOCKADDR_IN*)&bind_addr;
         sin->sin_family = AF_INET;
         sin->sin_addr.s_addr = g_preferred_ipv4_addr.sin_addr.s_addr;
         sin->sin_port = (g_bind_port != 0) ? htons((u_short)g_bind_port) : 0;
@@ -220,7 +222,7 @@ static BOOL enforce_binding(SOCKET s, int family, const struct sockaddr *target)
     }
     else if (family == AF_INET6 && !IN6_IS_ADDR_UNSPECIFIED(&g_preferred_ipv6_addr.sin6_addr))
     {
-        SOCKADDR_IN6 *sin6 = (SOCKADDR_IN6 *)&bind_addr;
+        SOCKADDR_IN6* sin6 = (SOCKADDR_IN6*)&bind_addr;
         sin6->sin6_family = AF_INET6;
         sin6->sin6_addr = g_preferred_ipv6_addr.sin6_addr;
         sin6->sin6_port = (g_bind_port != 0) ? htons((u_short)g_bind_port) : 0;
@@ -233,7 +235,7 @@ static BOOL enforce_binding(SOCKET s, int family, const struct sockaddr *target)
         return TRUE;
     }
 
-    int bind_result = original_bind(s, (SOCKADDR *)&bind_addr, bind_len);
+    int bind_result = original_bind(s, (SOCKADDR*)&bind_addr, bind_len);
     if (bind_result != 0)
     {
         if (verbose)
@@ -245,18 +247,18 @@ static BOOL enforce_binding(SOCKET s, int family, const struct sockaddr *target)
     {
         SOCKADDR_STORAGE local_addr;
         int addr_len = sizeof(local_addr);
-        if (original_getsockname(s, (SOCKADDR *)&local_addr, &addr_len) == 0)
+        if (original_getsockname(s, (SOCKADDR*)&local_addr, &addr_len) == 0)
         {
             TCHAR ip_str[INET6_ADDRSTRLEN];
             if (local_addr.ss_family == AF_INET)
             {
-                SOCKADDR_IN *sin = (SOCKADDR_IN *)&local_addr;
+                SOCKADDR_IN* sin = (SOCKADDR_IN*)&local_addr;
                 InetNtop(AF_INET, &sin->sin_addr, ip_str, INET_ADDRSTRLEN);
                 log_message(_T("Bound to IPv4: %s:%d\n"), ip_str, ntohs(sin->sin_port));
             }
             else if (local_addr.ss_family == AF_INET6)
             {
-                SOCKADDR_IN6 *sin6 = (SOCKADDR_IN6 *)&local_addr;
+                SOCKADDR_IN6* sin6 = (SOCKADDR_IN6*)&local_addr;
                 InetNtop(AF_INET6, &sin6->sin6_addr, ip_str, INET6_ADDRSTRLEN);
                 log_message(_T("Bound to IPv6: %s:%d\n"), ip_str, ntohs(sin6->sin6_port));
             }
@@ -273,29 +275,64 @@ SOCKET WSAAPI hooked_socket(int af, int type, int protocol)
     return s;
 }
 
-int WSAAPI hooked_bind(SOCKET s, const struct sockaddr *addr, int namelen)
-{
-    TCHAR ip_str[INET6_ADDRSTRLEN];
-    if (addr->sa_family == AF_INET)
-    {
-        SOCKADDR_IN *sin = (SOCKADDR_IN *)addr;
-        InetNtop(AF_INET, &sin->sin_addr, ip_str, INET_ADDRSTRLEN);
-        log_message(_T("Bind called on socket %d to IP: %s, port: %d\n"), s, ip_str, ntohs(sin->sin_port));
+int WSAAPI hooked_bind(SOCKET s, const struct sockaddr* addr, int namelen) {
+    struct sockaddr_storage bind_addr;
+    memcpy(&bind_addr, addr, namelen);
+    bool override = false;
+
+    if (bind_addr.ss_family == AF_INET && g_preferred_ipv4_addr.sin_addr.s_addr != 0) {
+        SOCKADDR_IN* sin = (SOCKADDR_IN*)&bind_addr;
+        if (sin->sin_addr.s_addr == INADDR_ANY) {
+            sin->sin_addr.s_addr = g_preferred_ipv4_addr.sin_addr.s_addr;
+            override = true;
+            if (verbose) {
+                TCHAR ip_str[INET_ADDRSTRLEN];
+                InetNtop(AF_INET, &sin->sin_addr, ip_str, INET_ADDRSTRLEN);
+                log_message(_T("Overriding bind from INADDR_ANY to preferred IPv4: %s\n"), ip_str);
+            }
+        }
+        else if (sin->sin_addr.s_addr != g_preferred_ipv4_addr.sin_addr.s_addr) {
+            TCHAR app_ip_str[INET_ADDRSTRLEN];
+            TCHAR pref_ip_str[INET_ADDRSTRLEN];
+            InetNtop(AF_INET, &sin->sin_addr, app_ip_str, INET_ADDRSTRLEN);
+            InetNtop(AF_INET, &g_preferred_ipv4_addr.sin_addr, pref_ip_str, INET_ADDRSTRLEN);
+            log_message(_T("Warning: Application tried to bind to %s, but preferred is %s\n"), app_ip_str, pref_ip_str);
+            // override: sin->sin_addr.s_addr = g_preferred_ipv4_addr.sin_addr.s_addr;
+        }
     }
-    else if (addr->sa_family == AF_INET6)
-    {
-        SOCKADDR_IN6 *sin6 = (SOCKADDR_IN6 *)addr;
-        InetNtop(AF_INET6, &sin6->sin6_addr, ip_str, INET6_ADDRSTRLEN);
-        log_message(_T("Bind called on socket %d to IP: %s, port: %d\n"), s, ip_str, ntohs(sin6->sin6_port));
+    else if (bind_addr.ss_family == AF_INET6 && !IN6_IS_ADDR_UNSPECIFIED(&g_preferred_ipv6_addr.sin6_addr)) {
+        SOCKADDR_IN6* sin6 = (SOCKADDR_IN6*)&bind_addr;
+        if (IN6_IS_ADDR_UNSPECIFIED(&sin6->sin6_addr)) {
+            sin6->sin6_addr = g_preferred_ipv6_addr.sin6_addr;
+            override = true;
+            if (verbose) {
+                TCHAR ip_str[INET6_ADDRSTRLEN];
+                InetNtop(AF_INET6, &sin6->sin6_addr, ip_str, INET6_ADDRSTRLEN);
+                log_message(_T("Overriding bind from unspecified to preferred IPv6: %s\n"), ip_str);
+            }
+        }
+        else if (!IN6_ARE_ADDR_EQUAL(&sin6->sin6_addr, &g_preferred_ipv6_addr.sin6_addr)) {
+            TCHAR app_ip_str[INET6_ADDRSTRLEN];
+            TCHAR pref_ip_str[INET6_ADDRSTRLEN];
+            InetNtop(AF_INET6, &sin6->sin6_addr, app_ip_str, INET6_ADDRSTRLEN);
+            InetNtop(AF_INET6, &g_preferred_ipv6_addr.sin6_addr, pref_ip_str, INET6_ADDRSTRLEN);
+            log_message(_T("Warning: Application tried to bind to %s, but preferred is %s\n"), app_ip_str, pref_ip_str);
+            // override: sin6->sin6_addr = g_preferred_ipv6_addr.sin6_addr;
+        }
     }
-    return original_bind(s, addr, namelen);
+
+    int result = original_bind(s, (struct sockaddr*)&bind_addr, namelen);
+    if (override && result == 0) {
+        log_message(_T("Successfully bound to preferred IP\n"));
+    }
+    return result;
 }
 
-int WSAAPI hooked_connect(SOCKET s, const struct sockaddr *name, int namelen)
+int WSAAPI hooked_connect(SOCKET s, const struct sockaddr* name, int namelen)
 {
     int sock_type;
     int optlen = sizeof(sock_type);
-    if (getsockopt(s, SOL_SOCKET, SO_TYPE, (char *)&sock_type, &optlen) == SOCKET_ERROR)
+    if (getsockopt(s, SOL_SOCKET, SO_TYPE, (char*)&sock_type, &optlen) == SOCKET_ERROR)
     {
         if (verbose)
             log_message(_T("Failed to get socket type: %d\n"), WSAGetLastError());
@@ -315,16 +352,17 @@ int WSAAPI hooked_connect(SOCKET s, const struct sockaddr *name, int namelen)
     int result = original_connect(s, name, namelen);
     if (verbose && result != 0)
         log_message(_T("Connect failed: %d\n"), WSAGetLastError());
+
     if (result == 0 && verbose)
     {
         SOCKADDR_STORAGE local_addr;
         int addr_len = sizeof(local_addr);
-        if (original_getsockname(s, (SOCKADDR *)&local_addr, &addr_len) == 0)
+        if (original_getsockname(s, (SOCKADDR*)&local_addr, &addr_len) == 0)
         {
             TCHAR ip_str[INET6_ADDRSTRLEN];
             if (local_addr.ss_family == AF_INET && g_preferred_ipv4_addr.sin_addr.s_addr != 0)
             {
-                SOCKADDR_IN *sin = (SOCKADDR_IN *)&local_addr;
+                SOCKADDR_IN* sin = (SOCKADDR_IN*)&local_addr;
                 InetNtop(AF_INET, &sin->sin_addr, ip_str, INET_ADDRSTRLEN);
                 if (sin->sin_addr.s_addr == g_preferred_ipv4_addr.sin_addr.s_addr)
                 {
@@ -337,7 +375,7 @@ int WSAAPI hooked_connect(SOCKET s, const struct sockaddr *name, int namelen)
             }
             else if (local_addr.ss_family == AF_INET6 && !IN6_IS_ADDR_UNSPECIFIED(&g_preferred_ipv6_addr.sin6_addr))
             {
-                SOCKADDR_IN6 *sin6 = (SOCKADDR_IN6 *)&local_addr;
+                SOCKADDR_IN6* sin6 = (SOCKADDR_IN6*)&local_addr;
                 InetNtop(AF_INET6, &sin6->sin6_addr, ip_str, INET6_ADDRSTRLEN);
                 if (IN6_ARE_ADDR_EQUAL(&sin6->sin6_addr, &g_preferred_ipv6_addr.sin6_addr))
                 {
@@ -353,17 +391,17 @@ int WSAAPI hooked_connect(SOCKET s, const struct sockaddr *name, int namelen)
     return result;
 }
 
-int WSAAPI hooked_sendto(SOCKET s, const char *buf, int len, int flags, const struct sockaddr *to, int tolen)
+int WSAAPI hooked_sendto(SOCKET s, const char* buf, int len, int flags, const struct sockaddr* to, int tolen)
 {
     int sock_type;
     int optlen = sizeof(sock_type);
-    if (getsockopt(s, SOL_SOCKET, SO_TYPE, (char *)&sock_type, &optlen) == 0 && sock_type == SOCK_DGRAM)
+    if (getsockopt(s, SOL_SOCKET, SO_TYPE, (char*)&sock_type, &optlen) == 0 && sock_type == SOCK_DGRAM)
     {
         if (g_bind_udp)
         {
             sockaddr_storage addr;
             int addr_len = sizeof(addr);
-            if (original_getsockname(s, (sockaddr *)&addr, &addr_len) == SOCKET_ERROR && WSAGetLastError() == WSAEINVAL)
+            if (original_getsockname(s, (sockaddr*)&addr, &addr_len) == SOCKET_ERROR && WSAGetLastError() == WSAEINVAL)
             {
                 if (!enforce_binding(s, to->sa_family, to))
                 {
@@ -377,75 +415,88 @@ int WSAAPI hooked_sendto(SOCKET s, const char *buf, int len, int flags, const st
     return original_sendto(s, buf, len, flags, to, tolen);
 }
 
-int WSAAPI hooked_getsockname(SOCKET s, struct sockaddr *name, int *namelen)
+int WSAAPI hooked_getsockname(SOCKET s, struct sockaddr* name, int* namelen)
 {
     return original_getsockname(s, name, namelen);
 }
-SOCKET WSAAPI hooked_WSAsocket(int af, int type, int protocol, LPWSAPROTOCOL_INFO lpProtocolInfo, GROUP g, DWORD dwFlags)
-{
+
+SOCKET WSAAPI hooked_WSAsocket(int af, int type, int protocol, LPWSAPROTOCOL_INFO lpProtocolInfo, GROUP g, DWORD dwFlags) {
     SOCKET s = original_WSAsocket(af, type, protocol, lpProtocolInfo, g, dwFlags);
     log_message(_T("WSASocket %d created: af=%d, type=%d, protocol=%d\n"), s, af, type, protocol);
     return s;
 }
 
-int WSAAPI hooked_WSAConnect(SOCKET s, const struct sockaddr *name, int namelen, LPWSABUF lpCallerData, LPWSABUF lpCalleeData, LPQOS lpSQOS, LPQOS lpGQOS)
-{
+int WSAAPI hooked_WSAConnect(SOCKET s, const struct sockaddr* name, int namelen, LPWSABUF lpCallerData, LPWSABUF lpCalleeData, LPQOS lpSQOS, LPQOS lpGQOS) {
     int sock_type;
     int optlen = sizeof(sock_type);
-    if (getsockopt(s, SOL_SOCKET, SO_TYPE, (char *)&sock_type, &optlen) == SOCKET_ERROR)
-    {
+    if (getsockopt(s, SOL_SOCKET, SO_TYPE, (char*)&sock_type, &optlen) == SOCKET_ERROR) {
         log_message(_T("Failed to get socket type in WSAConnect: %d\n"), WSAGetLastError());
         return SOCKET_ERROR;
     }
 
-    if (g_bind_tcp && sock_type == SOCK_STREAM)
-    {
+    if (g_bind_tcp && sock_type == SOCK_STREAM) {
         SOCKADDR_STORAGE local_addr;
         int addr_len = sizeof(local_addr);
-        if (original_getsockname(s, (SOCKADDR *)&local_addr, &addr_len) != 0 ||
-            (local_addr.ss_family == AF_INET && ((SOCKADDR_IN *)&local_addr)->sin_addr.s_addr == INADDR_ANY) ||
-            (local_addr.ss_family == AF_INET6 && IN6_IS_ADDR_UNSPECIFIED(&((SOCKADDR_IN6 *)&local_addr)->sin6_addr)))
-        {
-            if (!enforce_binding(s, name->sa_family, name))
-            {
+        if (original_getsockname(s, (SOCKADDR*)&local_addr, &addr_len) != 0 ||
+            (local_addr.ss_family == AF_INET && ((SOCKADDR_IN*)&local_addr)->sin_addr.s_addr == INADDR_ANY) ||
+            (local_addr.ss_family == AF_INET6 && IN6_IS_ADDR_UNSPECIFIED(&((SOCKADDR_IN6*)&local_addr)->sin6_addr))) {
+            if (!enforce_binding(s, name->sa_family, name)) {
                 log_message(_T("Failed to enforce binding for TCP socket %d in WSAConnect\n"), s);
                 return SOCKET_ERROR;
             }
         }
-        else
-        {
+        else {
             log_message(_T("Socket %d already bound, skipping enforce_binding\n"), s);
         }
     }
 
     int result = original_WSAConnect(s, name, namelen, lpCallerData, lpCalleeData, lpSQOS, lpGQOS);
-    if (result == SOCKET_ERROR)
-    {
+    if (result == SOCKET_ERROR) {
         int error = WSAGetLastError();
-        if (error == WSAEWOULDBLOCK)
-        {
+        if (error == WSAEWOULDBLOCK) {
             log_message(_T("WSAConnect on socket %d is in progress (non-blocking)\n"), s);
-
+            // SOCKET_ERROR with WSAEWOULDBLOCK as expected by non-blocking applications
             return result;
         }
-        else
-        {
+        else {
             log_message(_T("WSAConnect failed: %d\n"), error);
             return SOCKET_ERROR;
         }
     }
-    else
-    {
+    else {
         log_message(_T("WSAConnect succeeded for socket %d\n"), s);
     }
     return result;
 }
 
+int WSAAPI hooked_WSASendTo(SOCKET s, LPWSABUF lpBuffers, DWORD dwBufferCount, LPDWORD lpNumberOfBytesSent, DWORD dwFlags, const struct sockaddr* lpTo, int iTolen, LPWSAOVERLAPPED lpOverlapped, LPWSAOVERLAPPED_COMPLETION_ROUTINE lpCompletionRoutine)
+{
+    int sock_type;
+    int optlen = sizeof(sock_type);
+    if (getsockopt(s, SOL_SOCKET, SO_TYPE, (char*)&sock_type, &optlen) == 0 && sock_type == SOCK_DGRAM)
+    {
+        if (g_bind_udp)
+        {
+            sockaddr_storage addr;
+            int addr_len = sizeof(addr);
+            if (original_getsockname(s, (sockaddr*)&addr, &addr_len) == SOCKET_ERROR && WSAGetLastError() == WSAEINVAL)
+            {
+                if (!enforce_binding(s, lpTo->sa_family, lpTo))
+                {
+                    if (verbose)
+                        log_message(_T("Failed to enforce binding for UDP socket %d in WSASendTo\n"), s);
+                    return SOCKET_ERROR;
+                }
+            }
+        }
+    }
+    return original_WSASendTo(s, lpBuffers, dwBufferCount, lpNumberOfBytesSent, dwFlags, lpTo, iTolen, lpOverlapped, lpCompletionRoutine);
+}
+
 static BOOL initialize_hooks()
 {
     HMODULE ws2_32 = GetModuleHandle(_T("WS2_32"));
-    if (!ws2_32)
-        return FALSE;
+    if (!ws2_32) return FALSE;
 
     original_socket = (pSocket)GetProcAddress(ws2_32, "socket");
     original_bind = (pBind)GetProcAddress(ws2_32, "bind");
@@ -454,28 +505,38 @@ static BOOL initialize_hooks()
     original_getsockname = (pGetSockName)GetProcAddress(ws2_32, "getsockname");
     original_WSAsocket = (pWSASocket)GetProcAddress(ws2_32, "WSASocketW");
     original_WSAConnect = (pWSAConnect)GetProcAddress(ws2_32, "WSAConnect");
+    original_WSASendTo = (pWSASendTo)GetProcAddress(ws2_32, "WSASendTo");
+
+    if (!original_WSASendTo) return FALSE;
+
+    if (MH_CreateHook((LPVOID)original_WSASendTo, &hooked_WSASendTo, (LPVOID*)&original_WSASendTo) != MH_OK)
+        return FALSE;
 
     if (!original_socket || !original_bind || !original_connect || !original_sendto || !original_getsockname)
         return FALSE;
 
-    if (MH_CreateHook((LPVOID)original_socket, &hooked_socket, (LPVOID *)&original_socket) != MH_OK ||
-        MH_CreateHook((LPVOID)original_bind, &hooked_bind, (LPVOID *)&original_bind) != MH_OK ||
-        MH_CreateHook((LPVOID)original_connect, &hooked_connect, (LPVOID *)&original_connect) != MH_OK ||
-        MH_CreateHook((LPVOID)original_sendto, &hooked_sendto, (LPVOID *)&original_sendto) != MH_OK ||
-        MH_CreateHook((LPVOID)original_getsockname, &hooked_getsockname, (LPVOID *)&original_getsockname) != MH_OK ||
-        MH_CreateHook((LPVOID)original_WSAsocket, &hooked_WSAsocket, (LPVOID *)&original_WSAsocket) != MH_OK ||
-        MH_CreateHook((LPVOID)original_WSAConnect, &hooked_WSAConnect, (LPVOID *)&original_WSAConnect) != MH_OK)
+    if (MH_CreateHook((LPVOID)original_socket, &hooked_socket, (LPVOID*)&original_socket) != MH_OK ||
+        MH_CreateHook((LPVOID)original_bind, &hooked_bind, (LPVOID*)&original_bind) != MH_OK ||
+        MH_CreateHook((LPVOID)original_connect, &hooked_connect, (LPVOID*)&original_connect) != MH_OK ||
+        MH_CreateHook((LPVOID)original_sendto, &hooked_sendto, (LPVOID*)&original_sendto) != MH_OK ||
+        MH_CreateHook((LPVOID)original_getsockname, &hooked_getsockname, (LPVOID*)&original_getsockname) != MH_OK ||
+        MH_CreateHook((LPVOID)original_WSAsocket, &hooked_WSAsocket, (LPVOID*)&original_WSAsocket) != MH_OK ||
+        MH_CreateHook((LPVOID)original_WSAConnect, &hooked_WSAConnect, (LPVOID*)&original_WSAConnect) != MH_OK)
     {
         return FALSE;
     }
 
-    if (MH_EnableHook(MH_ALL_HOOKS) != MH_OK)
+    if (!original_socket || !original_bind || !original_connect || !original_sendto || !original_getsockname ||
+        !original_WSAsocket || !original_WSAConnect || !original_WSASendTo)
         return FALSE;
-    if (verbose)
-        log_message(_T("Hooks initialized successfully\n"));
+
+    if (MH_EnableHook(MH_ALL_HOOKS) != MH_OK) return FALSE;
+
+    if (verbose) log_message(_T("Hooks initialized successfully\n"));
     return TRUE;
 }
 
+// DLL EP
 BOOL APIENTRY DllMain(HANDLE hModule, DWORD reason, LPVOID reserved)
 {
     switch (reason)
