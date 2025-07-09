@@ -1,131 +1,558 @@
-# ForceBindIP Version 2
+# ForceBindIP - Network Interface Binding Tool
 
-ForceBindIP Version 2 is a tool that allows you to force applications to use a specific network interface by binding their sockets to a particular IP address or by specifying an interface GUID. Built as a rewrite of the original [ForceBindIP](https://r1ch.net/projects/forcebindip) in C++ using the MinHook library, it is useful for testing network configurations, ensuring applications use a specific network path, or bypassing certain network restrictions.
+## What It Does
+ForceBindIP forces any application to use a specific network interface or IP address for all network connections. Instead of letting programs choose which network adapter to use, this tool intercepts network calls and redirects them through your preferred interface.
+
+## Why Use It?
+- **VPN Routing**: Force specific apps through VPN while others use regular connection
+- **Multi-Network Setup**: Choose which network adapter apps should use (WiFi, Ethernet, etc.)
+- **Testing**: Test applications with different network configurations
+- **Security**: Ensure sensitive apps only use secure network interfaces
+- **Bandwidth Management**: Route heavy downloads through specific connections
 
 ## Features
+-  **Cross-Platform**: Works on Windows (DLL injection) and Linux (LD_PRELOAD)
+-  **IPv4 & IPv6**: Full support for both IP versions
+-  **Interface Binding**: Bind by network interface name or IP address
+-  **Protocol Support**: TCP and UDP socket binding
+-  **Real-time**: No app restart needed - works with running applications
+-  **Verbose Logging**: Detailed connection information for debugging
 
-- Bind applications to a specific IPv4 or IPv6 address.
+## Quick Start
 
-- Bind applications to a network interface using its GUID, automatically selecting the appropriate IP address based on the socket family.
+### Linux
+```bash
+# Build
+make clean && make
 
-- Supports both TCP and UDP sockets.
+# List available network interfaces
+./forcebindip -l
 
-- Verbose mode for detailed logging and debugging.
+# Force curl to use specific IP
+./forcebindip -4 192.168.1.100 curl http://httpbin.org/ip
 
-## Requirements
+# Force app through VPN interface
+./forcebindip -i tun0 firefox
 
-- Windows operating system with Winsock support.
-
-- Compiled with Visual Studio 2022.
-
-- Requires the MinHook library for hooking Winsock functions.
-
-## Usage
-
-Run the injector with the following syntax:
-
-```cmd
-injector.exe [options] <program> [args...]
+# Test with sample program
+./forcebindip -v -4 192.168.1.3 ./test_ipv4
 ```
 
-### Options
-
-- `-v`: Enable verbose output in terminal for injector and debug output from DLL
-
-- `-o`: Save DLL logs to the specified file (does not affect terminal output)
-
-- `-l`: List available network interfaces with GUIDs and IP addresses
-
-- `-4 <IPv4>`: Bind to the specified IPv4 address (e.g., `192.168.1.1`).
-
-- `-6 <IPv6>`: Bind to the specified IPv6 address (e.g., `fdfe:dcba:9876::1`).
-
-- `-i <GUID>`: Bind to the network interface with the specified GUID (without curly braces, e.g., `11111111-2222-3333-4444-555555555555`).
-
-- `-t`: Bind TCP sockets (default if no binding specified)
-
-- `-u`: Bind UDP sockets (default if no binding specified)
-
-- `-p`: Bind to the specified port (requires -t or -u)
-
-### Notes on Binding
-
-- **Direct IP Binding (`-4` or `-6`)**: The application’s sockets are bound to the specified IPv4 or IPv6 address.
-
-- **Interface Binding (`-i`)**: The injector resolves the GUID to an IP address, prioritizing non-link-local IPv6 over IPv4. The DLL then binds sockets to this IP, but the application must support the corresponding address family (e.g., `AF_INET` for IPv4, `AF_INET6` for IPv6).
-
-- The application must create sockets compatible with the specified or resolved IP’s address family for binding to succeed.
-
-## Examples
-
-- **Bind to a specific IPv4 address:**
-
+### Windows
 ```cmd
+# List network interfaces
+injector.exe -l
+
+# Force app to use specific IP
 injector.exe -4 192.168.1.1 program.exe
-```
 
-Output:
-
-```cmd
-DLL injected successfully with IPv4: 192.168.1.1
-```
-
-- **Bind to a specific IPv6 address:**
-
-```cmd
-injector.exe -6 fdfe:dcba:9876::1 program.exe
-```
-
-Output:
-
-```cmd
-DLL injected successfully with IPv6: fdfe:dcba:9876::1
-```
-
-- **Bind to a network interface using its GUID:**
-
-```cmd
+# Force app through interface GUID
 injector.exe -i 11111111-2222-3333-4444-555555555555 program.exe
 ```
 
-Output (example with resolved IP):
+## Command Options
 
-```cmd
-DLL injected successfully with interface IP: IPv6:fdfe:dcba:9876::1
+### Linux
+```bash
+./forcebindip [options] <command> [args...]
+
+-4 <ip>      # Use specific IPv4 address
+-6 <ip>      # Use specific IPv6 address  
+-i <iface>   # Use network interface (eth0, wlo1, tun0, etc.)
+-v           # Verbose output (show connection details)
+-l           # List all available network interfaces
+-h           # Show help
 ```
 
-- **Verbose mode with interface binding:**
-
+### Windows
 ```cmd
-injector.exe -v -i 11111111-2222-3333-4444-555555555555 program.exe
+injector.exe [options] <program> [args...]
+
+-4 <ip>      # Use specific IPv4 address
+-6 <ip>      # Use specific IPv6 address
+-i <GUID>    # Use network interface by GUID
+-v           # Verbose output
+-l           # List network interfaces with GUIDs
+-t           # Bind TCP sockets only
+-u           # Bind UDP sockets only
+-p <port>    # Bind to specific port
 ```
 
-To find your network interface GUIDs and their associated IP addresses, you can:
+## Practical Examples
 
-- Use `ipconfig /all` in the command prompt.
+### Force Specific Applications
+```bash
+# Linux Examples
+./forcebindip -i eth0 wget http://example.com          # Download via Ethernet
+./forcebindip -i wlo1 curl http://api.service.com      # API call via WiFi
+./forcebindip -i tun0 ssh user@server.com             # SSH via VPN
+./forcebindip -4 10.0.0.5 firefox                     # Browser via specific IP
 
-- ~~Build `guid.cpp` or run the provided `forcebindipguidfinder.exe` which lists active adapters.~~ use `-l` to get list of all working GUID and IPs
-
-## Known Issues
-
-- When using IPv4 binding (`-4`), some applications like `curl` may encounter errors such as:
-
-```cmd
-curl: (6) getaddrinfo() thread failed to start
+# Windows Examples
+injector.exe -i {GUID} chrome.exe                     # Chrome via specific adapter
+injector.exe -4 192.168.1.100 uTorrent.exe           # Torrent via specific IP
+injector.exe -i {VPN-GUID} discord.exe                # Discord via VPN
 ```
 
-- If the application’s socket family (e.g., `AF_INET`) does not match the resolved IP’s family (e.g., IPv6 from `-i`), binding may fail silently, and the application will use the default interface.
+### Testing & Verification
+```bash
+# Check your real IP before
+curl http://httpbin.org/ip
 
-Report additional issues through the issue tracker.
+# Force through different interface
+./forcebindip -4 192.168.1.100 curl http://httpbin.org/ip
 
-## Notes
+# Compare the IPs - they should be different!
+```
 
-- Ensure the specified IP address or interface is available and properly configured on your system.
+### VPN Use Cases
+```bash
+# Force sensitive apps through VPN only
+./forcebindip -i tun0 telegram-desktop
+./forcebindip -i tun0 signal-desktop
+./forcebindip -i tun0 firefox --private-window
 
-- When using `-i`, provide the GUID without curly braces (e.g., `11111111-2222-3333-4444-555555555555`).
+# Keep regular apps on normal connection
+./forcebindip -i wlo1 spotify
+./forcebindip -i eth0 steam
+```
 
-- The tool hooks Winsock functions (`socket`, `bind`, `connect`, `sendto`, `getsockname`) to enforce binding.
+## How It Works
 
-- Please report any issues or success stories through the issue tracker.
+### Linux (LD_PRELOAD Method)
+1. Intercepts socket system calls using `LD_PRELOAD`
+2. When app creates a socket, ForceBindIP binds it to your chosen interface
+3. All network traffic from that app goes through the specified interface
+4. Works with: `socket()`, `bind()`, `connect()`, `sendto()`, `getsockname()`
 
-- This README was created by an AI.
+### Windows (DLL Injection Method)
+1. Injects a DLL into the target process
+2. Hooks WinSock API functions using MinHook library
+3. Redirects network calls to use specified interface/IP
+4. Works with: `socket`, `bind`, `connect`, `WSASendTo`, `getsockname`
+
+## Supported Applications
+- **Web Browsers**: Firefox, Chrome, Edge
+- **Communication**: Discord, Telegram, Signal, WhatsApp
+- **Development**: curl, wget, ssh, git, npm, pip
+- **Entertainment**: Steam, Spotify, VLC
+- **File Sharing**: BitTorrent clients, FTP clients
+- **Custom Apps**: Any app using standard socket APIs
+
+## Installation
+
+### Linux
+```bash
+# Clone and build
+git clone <repository-url>
+cd FBI
+make clean && make
+
+# Generated files:
+# - forcebindip: Main executable
+# - libforcebindip.so: Hook library
+# - test_ipv4, test_ipv6: Test programs
+```
+
+### Windows
+```bash
+# Use Visual Studio 2022
+# Open solution files in dll/ and injector/ directories
+# Build with MinHook library dependency
+```
+
+## Troubleshooting
+
+### Common Issues
+
+**"Invalid argument" error:**
+```bash
+# ❌ Don't use loopback for external connections
+./forcebindip -4 127.0.0.1 curl http://google.com
+
+# ✅ Use actual interface IP
+./forcebindip -4 192.168.1.3 curl http://google.com
+```
+
+**Permission denied:**
+```bash
+# Some apps need elevated privileges
+sudo ./forcebindip -i eth0 ping google.com
+```
+
+**Library not found:**
+```bash
+# Make sure library exists
+ls -la libforcebindip.so
+
+# Rebuild if needed
+make clean && make
+```
+
+### Debugging
+```bash
+# Enable verbose mode to see what's happening
+./forcebindip -v -4 192.168.1.3 curl http://httpbin.org/ip
+
+# Check available interfaces
+./forcebindip -l
+
+# Test connectivity manually
+ping -I 192.168.1.3 google.com
+```
+
+## Advanced Usage
+
+### Multiple Interface Setup
+```bash
+# Route different services through different interfaces
+./forcebindip -i eth0 ./download_script.sh     # Heavy downloads via Ethernet
+./forcebindip -i wlo1 ./api_client.py          # API calls via WiFi
+./forcebindip -i tun0 ./secure_chat.sh         # Secure chat via VPN
+```
+
+### Development & Testing
+```bash
+# Test IPv4 vs IPv6
+./forcebindip -4 192.168.1.3 ./network_test
+./forcebindip -6 2001:db8::1 ./network_test
+
+# Test different protocols
+./forcebindip -v -4 192.168.1.3 nc -u 8.8.8.8 53    # UDP
+./forcebindip -v -4 192.168.1.3 nc 8.8.8.8 80       # TCP
+```
+
+## Files Structure
+```
+FBI/
+├── build/                     # Build output directory
+├── common/                    # Cross-platform headers
+├── dll/                       # Windows DLL source code
+├── forcebindip                # Main Linux executable
+├── injector/                  # Windows injector source
+├── injector_crossplatform/    # Cross-platform injector
+├── libforcebindip_simple.c    # Linux hook library source (C)
+├── libforcebindip.so          # Linux hook library (compiled)
+├── Makefile                   # Linux build system
+├── README_FA.md               # Persian documentation
+├── README.md                  # English documentation
+├── test_crossplatform/        # Cross-platform test programs
+├── test_ipv4                  # IPv4 test executable
+├── test_ipv6                  # IPv6 test executable
+├── testv4/                    # Original IPv4 test source
+└── testv6/                    # Original IPv6 test source
+```
+
+## Detailed Usage Guide
+
+### Installation Details
+
+#### Linux Build Requirements
+```bash
+# Ensure you have required packages
+sudo apt-get update
+sudo apt-get install build-essential gcc g++ make
+
+# Clone and build
+git clone <repository-url>
+cd FBI
+make clean && make
+
+# Generated files:
+# - forcebindip: Main injector executable
+# - libforcebindip.so: Hook library for LD_PRELOAD
+# - test_ipv4, test_ipv6: Test programs
+```
+
+#### Windows Build Requirements
+- Windows operating system with Winsock support
+- Visual Studio 2022
+- MinHook library for hooking Winsock functions
+
+### Complete Command Reference
+
+#### All Linux Options
+```bash
+./forcebindip [options] <command> [args...]
+
+-4 <ip>        # Bind to specific IPv4 address
+-6 <ip>        # Bind to specific IPv6 address  
+-i <interface> # Bind to network interface
+-p <port>      # Bind to specific port (Linux only)
+-v             # Enable verbose output
+-l             # List available network interfaces
+-h, --help     # Show help message
+```
+
+#### All Windows Options
+```cmd
+injector.exe [options] <program> [args...]
+
+-4 <IPv4>      # Bind to specified IPv4 address
+-6 <IPv6>      # Bind to specified IPv6 address
+-i <GUID>      # Bind to network interface by GUID
+-v             # Enable verbose output
+-o <file>      # Save DLL logs to specified file
+-l             # List available network interfaces with GUIDs
+-t             # Bind TCP sockets (default if no binding specified)
+-u             # Bind UDP sockets (default if no binding specified)
+-p <port>      # Bind to specified port (requires -t or -u)
+```
+
+### Comprehensive Examples
+
+#### Basic Interface Operations
+```bash
+# List all available network interfaces
+./forcebindip -l
+
+# Example output:
+# Available Network Interfaces:
+# ========================================
+# Interface Name: wlo1
+# Interface ID: wlo1
+# Description: Linux Network Interface
+# Status: Up
+# IPv4 Address: 192.168.1.3
+```
+
+#### IPv4 Binding Examples
+```bash
+# Force curl to use specific IP address
+./forcebindip -v -4 192.168.1.100 curl http://httpbin.org/ip
+
+# Force wget to use specific IP
+./forcebindip -4 10.0.0.5 wget http://example.com
+
+# Test with sample program
+./forcebindip -v -4 192.168.1.3 ./test_ipv4
+```
+
+#### Interface Binding Examples
+```bash
+# Force connection through specific interface
+./forcebindip -v -i wlo1 curl http://httpbin.org/ip
+
+# Use ethernet interface
+./forcebindip -i eth0 wget http://example.com
+
+# Test with interface binding
+./forcebindip -v -i wlo1 ./test_ipv4
+```
+
+#### IPv6 Support Examples
+```bash
+# Bind to IPv6 address (when available)
+./forcebindip -6 2001:db8::1 curl -6 http://httpbin.org/ip
+
+# Use IPv6 interface
+./forcebindip -i eth0 curl -6 http://example.com
+```
+
+#### Advanced Usage Examples
+```bash
+# Verbose mode for debugging
+./forcebindip -v -4 192.168.1.3 ssh user@server.com
+
+# Force specific application through VPN interface
+./forcebindip -i tun0 firefox
+
+# Test UDP binding
+./forcebindip -v -4 192.168.1.3 dig @8.8.8.8 google.com
+```
+
+### Technical Implementation Details
+
+#### Linux Implementation (LD_PRELOAD)
+- Uses **LD_PRELOAD** technique to intercept socket functions
+- Hooks: `socket()`, `bind()`, `connect()`, `sendto()`, `getsockname()`
+- **SO_BINDTODEVICE** for interface binding
+- Network interface discovery via `getifaddrs()`
+
+#### Windows Implementation (DLL Injection)
+- Uses **DLL injection** with MinHook library
+- Hooks WinSock functions: `socket()`, `bind()`, `connect()`, `WSASendTo()`
+- Interface binding via IP address resolution
+
+### Supported Applications
+The tool works with any dynamically linked application that uses standard socket functions:
+- **Web browsers**: Firefox, Chrome (with some limitations)
+- **Command-line tools**: curl, wget, ssh, nc, dig
+- **Network utilities**: ping, traceroute, nmap
+- **Custom applications**: Any program using standard socket APIs
+
+### Complete Troubleshooting Guide
+
+#### Common Issues and Solutions
+
+**1. "Invalid argument" Error**
+This usually occurs when trying to bind loopback address (127.0.0.1) to external connections:
+```bash
+# ❌ This may fail:
+./forcebindip -4 127.0.0.1 curl http://google.com
+
+# ✅ Use actual interface IP:
+./forcebindip -4 192.168.1.3 curl http://google.com
+```
+
+**2. Permission Denied**
+Some applications may require elevated privileges:
+```bash
+sudo ./forcebindip -i eth0 ping google.com
+```
+
+**3. IPv6 Link-Local Addresses**
+Link-local IPv6 addresses require scope specification:
+```bash
+# Add %interface to link-local addresses
+./forcebindip -6 fe80::1%eth0 curl -6 http://example.com
+```
+
+**4. Library Not Found**
+Ensure the hook library is built and accessible:
+```bash
+# Check if library exists
+ls -la libforcebindip.so
+
+# Rebuild if necessary
+make clean && make
+```
+
+### Debugging Procedures
+
+#### Enable Verbose Mode
+```bash
+./forcebindip -v -4 192.168.1.3 ./test_ipv4
+```
+
+#### Check Network Configuration
+```bash
+# List interfaces
+ip addr show
+
+# Check routing
+ip route show
+
+# Test connectivity
+ping -I 192.168.1.3 google.com
+```
+
+#### Manual Testing
+```bash
+# Test without ForceBindIP
+./test_ipv4
+
+# Test with ForceBindIP
+./forcebindip -v -4 192.168.1.3 ./test_ipv4
+```
+
+### Sample Output Examples
+
+#### Successful IPv4 Binding
+```
+$ ./forcebindip -v -4 192.168.1.3 ./test_ipv4
+Verbose mode enabled
+Set preferred IP to IPv4: 192.168.1.3
+Executing: ./test_ipv4 
+Using hook library: ./libforcebindip.so
+ForceBindIP Linux hooks initializing...
+Preferred IPv4: 192.168.1.3
+Preferred Interface: 
+Bind TCP: yes
+Bind UDP: yes
+Linux hooks initialized successfully
+Socket 3 created: domain=2, type=1, protocol=0
+Bound to IPv4: 192.168.1.3:0
+TCP socket 3 connected from: 192.168.1.3:42019
+Connected from local IP: 192.168.1.3
+```
+
+#### Interface Listing Output
+```
+$ ./forcebindip -l
+Available Network Interfaces:
+========================================
+
+Interface Name: wlo1
+Interface ID: wlo1
+Description: Linux Network Interface
+Status: Up
+IPv4 Address: 192.168.1.3
+
+Interface Name: eth0
+Interface ID: eth0
+Description: Linux Network Interface
+Status: Up
+IPv4 Address: 10.0.0.5
+```
+
+### Development Information
+
+#### Building from Source
+```bash
+# Clean build
+make clean
+
+# Build all components
+make
+
+# Build specific targets
+make libforcebindip.so
+make forcebindip
+make test_ipv4
+```
+
+#### Testing Procedures
+```bash
+# Test IPv4 binding
+./forcebindip -v -4 192.168.1.3 ./test_ipv4
+
+# Test interface binding
+./forcebindip -v -i wlo1 ./test_ipv4
+
+# Test with real applications
+./forcebindip -v -4 192.168.1.3 curl http://httpbin.org/ip
+```
+
+#### Code Structure Details
+```
+FBI/
+├── build/                           # Build output directory
+├── common/                          # Shared headers
+│   ├── platform.h                   # Platform abstraction
+│   ├── network_manager.h            # Network interface management
+│   └── network_manager.cpp
+├── dll/                             # Windows DLL source code
+├── forcebindip                      # Main Linux executable
+├── injector/                        # Windows injector source
+├── injector_crossplatform/          # Cross-platform injector
+│   └── injector.cpp
+├── libforcebindip_simple.c          # Linux hook library source (C)
+├── libforcebindip.so                # Linux hook library (compiled)
+├── Makefile                         # Linux build system
+├── README_FA.md                     # Persian documentation
+├── README.md                        # English documentation
+├── test_crossplatform/              # Cross-platform test programs
+│   ├── test_ipv4.cpp
+│   └── test_ipv6.cpp
+├── test_ipv4                        # IPv4 test executable
+├── test_ipv6                        # IPv6 test executable
+├── testv4/                          # Original IPv4 test source
+│   └── testv4.cpp
+└── testv6/                          # Original IPv6 test source
+    └── testv6.cpp
+```
+
+## Contributing
+1. Fork the repository
+2. Create feature branch: `git checkout -b feature/my-feature`
+3. Test on both platforms
+4. Submit pull request
+
+## License
+Based on original ForceBindIP project license.
+
+---
+
+**Ready to control your network traffic?**  
+Start with `./forcebindip -l` to see your interfaces, then force your apps to use exactly the network path you want!
