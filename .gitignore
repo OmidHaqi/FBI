@@ -428,3 +428,5 @@ dll/
 injector/
 testv4/
 testv6/
+
+wget-log*
