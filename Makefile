@@ -6,21 +6,18 @@ LDFLAGS = -shared -ldl
 
 # Directories
 COMMON_DIR = common
-LINUX_DIR = linux
 INJECTOR_DIR = injector_crossplatform
 TEST_DIR = test_crossplatform
 BUILD_DIR = build
 
 # Source files
 COMMON_SOURCES = $(COMMON_DIR)/network_manager.cpp
-LINUX_SOURCES = $(LINUX_DIR)/linux_hooker.cpp
 INJECTOR_SOURCES = $(INJECTOR_DIR)/injector.cpp
 TEST_IPV4_SOURCES = $(TEST_DIR)/test_ipv4.cpp
 TEST_IPV6_SOURCES = $(TEST_DIR)/test_ipv6.cpp
 
 # Object files
 COMMON_OBJECTS = $(COMMON_SOURCES:%.cpp=$(BUILD_DIR)/%.o)
-LINUX_OBJECTS = $(LINUX_SOURCES:%.cpp=$(BUILD_DIR)/%.o)
 INJECTOR_OBJECTS = $(INJECTOR_SOURCES:%.cpp=$(BUILD_DIR)/%.o)
 TEST_IPV4_OBJECTS = $(TEST_IPV4_SOURCES:%.cpp=$(BUILD_DIR)/%.o)
 TEST_IPV6_OBJECTS = $(TEST_IPV6_SOURCES:%.cpp=$(BUILD_DIR)/%.o)
@@ -37,7 +34,7 @@ all: $(HOOK_LIB) $(INJECTOR) $(TEST_IPV4) $(TEST_IPV6)
 
 # Create build directories
 $(BUILD_DIR):
-	mkdir -p $(BUILD_DIR)/$(COMMON_DIR) $(BUILD_DIR)/$(LINUX_DIR) $(BUILD_DIR)/$(INJECTOR_DIR) $(BUILD_DIR)/$(TEST_DIR)
+	mkdir -p $(BUILD_DIR)/$(COMMON_DIR) $(BUILD_DIR)/$(INJECTOR_DIR) $(BUILD_DIR)/$(TEST_DIR)
 
 # Hook library
 $(HOOK_LIB): libforcebindip_simple.c
@@ -56,10 +53,6 @@ $(TEST_IPV6): $(BUILD_DIR) $(COMMON_OBJECTS) $(TEST_IPV6_OBJECTS)
 
 # Compile common objects
 $(BUILD_DIR)/$(COMMON_DIR)/%.o: $(COMMON_DIR)/%.cpp
-	$(CXX) $(CXXFLAGS) -c $< -o $@
-
-# Compile Linux-specific objects
-$(BUILD_DIR)/$(LINUX_DIR)/%.o: $(LINUX_DIR)/%.cpp
 	$(CXX) $(CXXFLAGS) -c $< -o $@
 
 # Compile injector objects
