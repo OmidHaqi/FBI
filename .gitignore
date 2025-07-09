@@ -369,3 +369,62 @@ dev/.vscode/c_cpp_properties.json
 dev/test_forcebindip.exe
 
 src
+
+# Build outputs
+build/
+*.o
+*.so
+*.dll
+*.exe
+forcebindip
+test_ipv4
+test_ipv6
+libforcebindip.so
+
+# Visual Studio files (Windows)
+.vs/
+*.vcxproj.user
+*.sln.docstates
+[Dd]ebug/
+[Rr]elease/
+x64/
+x86/
+*.pdb
+*.ilk
+*.obj
+*.lib
+*.exp
+
+# Temporary files
+*.tmp
+*.temp
+*.log
+*.bak
+*~
+
+# IDE files
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# System files
+.DS_Store
+Thumbs.db
+
+# Log files
+*.log
+forcebindip_*.log
+/tmp/forcebindip.log
+
+# Package files
+*.deb
+*.rpm
+*.tar.gz
+*.zip
+
+# Original Windows-only files (preserved)
+dll/
+injector/
+testv4/
+testv6/
