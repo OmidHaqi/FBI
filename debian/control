@@ -1,0 +1,28 @@
+Package: forcebindip
+Version: 1.0.0
+Section: net
+Priority: optional
+Architecture: amd64
+Essential: no
+Depends: libc6 (>= 2.17), build-essential
+Maintainer: Test <Test@example.com>
+Description: Network Interface Binding Tool
+ ForceBindIP forces any application to use a specific network interface or IP address
+ for all network connections. Instead of letting programs choose which network adapter
+ to use, this tool intercepts network calls and redirects them through your preferred
+ interface.
+ .
+ Features:
+  - Cross-Platform support (Linux/Windows)
+  - IPv4 & IPv6 support
+  - Interface binding by name or IP address
+  - TCP and UDP socket binding
+  - Real-time operation without app restart
+  - Verbose logging for debugging
+ .
+ Common use cases:
+  - VPN routing: Force specific apps through VPN
+  - Multi-network setup: Choose network adapter for apps
+  - Testing: Test applications with different network configurations
+  - Security: Ensure sensitive apps use secure interfaces
+  - Bandwidth management: Route downloads through specific connections

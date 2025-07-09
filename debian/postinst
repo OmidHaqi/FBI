@@ -1,0 +1,75 @@
+#!/bin/bash
+set -e
+
+echo "Installing ForceBindIP..."
+
+# Create necessary directories
+mkdir -p /usr/local/bin
+mkdir -p /usr/local/lib
+mkdir -p /usr/local/share/man/man1
+mkdir -p /usr/local/share/doc/forcebindip
+
+# Set proper permissions
+chmod 755 /usr/local/bin/forcebindip
+chmod 644 /usr/local/lib/libforcebindip.so
+chmod 755 /usr/local/bin/test_ipv4
+chmod 755 /usr/local/bin/test_ipv6
+
+# Update dynamic linker cache
+ldconfig
+
+echo "ForceBindIP installation completed successfully!"
+echo ""
+echo "=== ForceBindIP Usage Guide ==="
+echo ""
+echo "📋 Command Options:"
+echo "  -4 <ip>        # Use specific IPv4 address"
+echo "  -6 <ip>        # Use specific IPv6 address"
+echo "  -i <interface> # Use network interface (eth0, wlo1, tun0, etc.)"
+echo "  -v             # Verbose output (show connection details)"
+echo "  -l             # List all available network interfaces"
+echo "  -h, --help     # Show help message"
+echo ""
+echo "🌐 Basic Usage Examples:"
+echo "  forcebindip -l                                    # List network interfaces"
+echo "  forcebindip -4 192.168.1.100 curl httpbin.org/ip # Force curl through specific IP"
+echo "  forcebindip -6 2001:db8::1 curl -6 httpbin.org/ip # Force curl through IPv6"
+echo "  forcebindip -i eth0 firefox                       # Force Firefox through ethernet"
+echo "  forcebindip -i wlo1 wget http://example.com       # Force wget through WiFi"
+echo ""
+echo "🔒 VPN & Security Examples:"
+echo "  forcebindip -i tun0 telegram-desktop              # Force Telegram through VPN"
+echo "  forcebindip -i tun0 firefox --private-window      # Private browsing via VPN"
+echo "  forcebindip -i tun0 ssh user@server.com           # SSH through VPN only"
+echo ""
+echo "🧪 Testing & Debugging:"
+echo "  forcebindip -v -4 192.168.1.3 test_ipv4          # Test IPv4 binding (verbose)"
+echo "  forcebindip -v -i eth0 test_ipv6                  # Test interface binding"
+echo "  forcebindip -v -4 192.168.1.100 curl httpbin.org/ip # Verify IP change"
+echo ""
+echo "⚡ Advanced Usage:"
+echo "  forcebindip -i eth0 ./download_script.sh          # Heavy downloads via ethernet"
+echo "  forcebindip -i wlo1 ./api_client.py               # API calls via WiFi"
+echo "  forcebindip -v -4 10.0.0.5 nc -u 8.8.8.8 53      # UDP DNS via specific IP"
+echo "  forcebindip -v -6 fe80::1%eth0 ping6 google.com   # IPv6 with link-local"
+echo ""
+echo "🎯 Common Applications:"
+echo "  forcebindip -i tun0 discord                       # Discord through VPN"
+echo "  forcebindip -4 192.168.1.100 steam                # Steam via specific IP"
+echo "  forcebindip -i eth0 git clone https://github.com/user/repo # Git via ethernet"
+echo "  forcebindip -i wlo1 npm install                   # NPM downloads via WiFi"
+echo ""
+echo "⚠️  Troubleshooting Tips:"
+echo "  • Don't use 127.0.0.1 for external connections"
+echo "  • Use actual interface IPs (check with: ip addr show)"
+echo "  • Some apps need sudo: sudo forcebindip -i eth0 ping google.com"
+echo "  • For IPv6 link-local: add %interface (fe80::1%eth0)"
+echo ""
+echo "📚 More Information:"
+echo "  man forcebindip                                   # Detailed manual"
+echo "  /usr/local/share/doc/forcebindip/README.md        # English documentation"
+echo "  /usr/local/share/doc/forcebindip/README_FA.md     # Persian documentation"
+
+#DEBHELPER#
+
+exit 0

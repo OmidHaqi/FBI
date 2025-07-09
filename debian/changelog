@@ -1,0 +1,14 @@
+forcebindip (1.0.0) stable; urgency=low
+
+  * Initial release of ForceBindIP for Linux
+  * Cross-platform network interface binding tool
+  * IPv4 and IPv6 support
+  * Interface binding by name or IP address
+  * TCP and UDP socket binding support
+  * LD_PRELOAD implementation for Linux
+  * Verbose logging and debugging features
+  * Support for VPN routing and multi-network setups
+  * Compatible with major applications (browsers, CLI tools, etc.)
+  * Complete Persian and English documentation
+
+ -- Test <Test@example.com>  Thu, 09 Jul 2025 12:00:00 +0000
