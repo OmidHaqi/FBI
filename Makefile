@@ -31,7 +31,7 @@ INJECTOR = forcebindip
 TEST_IPV4 = test_ipv4
 TEST_IPV6 = test_ipv6
 
-.PHONY: all clean install test
+.PHONY: all clean install test deb test-deb test-usage
 
 all: $(HOOK_LIB) $(INJECTOR) $(TEST_IPV4) $(TEST_IPV6)
 
@@ -92,6 +92,21 @@ test: all
 clean:
 	rm -rf $(BUILD_DIR) $(HOOK_LIB) $(INJECTOR) $(TEST_IPV4) $(TEST_IPV6)
 
+# Build Debian package
+deb: all
+	@echo "Building Debian package..."
+	./build-deb.sh
+
+# Test Debian package
+test-deb: deb
+	@echo "Testing Debian package..."
+	./test-package.sh
+
+# Test all usage scenarios
+test-usage:
+	@echo "Testing all ForceBindIP usage scenarios..."
+	./test-all-usage.sh
+
 # Help
 help:
 	@echo "ForceBindIP Cross-Platform Build System"
@@ -101,11 +116,19 @@ help:
 	@echo "  clean    - Remove all build files"
 	@echo "  install  - Install to system (requires sudo)"
 	@echo "  test     - Show test commands"
-	@echo "  help     - Show this help message"
+	@echo "  deb      - Build Debian package (.deb)"
+	@echo "  test-deb  - Build and test Debian package"
+	@echo "  test-usage - Test all ForceBindIP usage scenarios"
+	@echo "  help      - Show this help message"
 	@echo ""
 	@echo "Usage Examples:"
 	@echo "  make all                          # Build all components"
+	@echo "  make deb                          # Build Debian package"
 	@echo "  make install                      # Install to system"
 	@echo "  ./forcebindip -l                  # List network interfaces"
 	@echo "  ./forcebindip -v -4 192.168.1.100 ./test_ipv4  # Bind to specific IPv4"
 	@echo "  ./forcebindip -v -i eth0 ./test_ipv4           # Bind to interface"
+	@echo ""
+	@echo "Package Management:"
+	@echo "  sudo dpkg -i forcebindip_1.0.0_amd64.deb      # Install .deb package"
+	@echo "  sudo dpkg -r forcebindip                       # Remove package"
