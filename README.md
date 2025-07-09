@@ -7,7 +7,52 @@ ForceBindIP forces any application to use a specific network interface or IP add
 - **VPN Routing**: Force specific apps through VPN while others use regular connection
 - **Multi-Network Setup**: Choose which network adapter apps should use (WiFi, Ethernet, etc.)
 - **Testing**: Test applications with different network configurations
-- **Security**: Ensure sensitive apps only use secure network interfaces
+- **Security**: Ensure sensitive apps on## Contributing
+1. Fork the repository
+2. Create feature branch: `git checkout -b feature/my-feature`
+3. Test on both platforms
+4. Submit pull request
+
+## Quick Reference
+
+### Installation
+```bash
+# Quick install (Debian/Ubuntu)
+sudo dpkg -i forcebindip_1.0.0_amd64.deb
+
+# Or build from source
+make clean && make
+```
+
+### Common Commands
+```bash
+forcebindip -l                                    # List interfaces
+forcebindip -4 <IP> <command>                     # Bind to IPv4
+forcebindip -6 <IP> <command>                     # Bind to IPv6
+forcebindip -i <interface> <command>              # Bind to interface
+forcebindip -v -4 <IP> <command>                  # Verbose mode
+```
+
+### Testing
+```bash
+make test-usage        # Test all 27 usage scenarios
+make test-deb          # Test package installation
+make deb              # Build Debian package
+```
+
+### Support
+- 📖 **Documentation**: README.md (English), README_FA.md (Persian)
+- 🧪 **Testing**: `./test-all-usage.sh` for comprehensive testing
+- 📦 **Package**: Pre-built .deb available
+- 🔧 **Build**: Use `make help` for all options
+
+## License
+Based on original ForceBindIP project license.
+
+---
+
+**Ready to control your network traffic?**  
+Start with `forcebindip -l` to see your interfaces, then force your apps to use exactly the network path you want! network interfaces
 - **Bandwidth Management**: Route heavy downloads through specific connections
 
 ## Features
@@ -17,13 +62,18 @@ ForceBindIP forces any application to use a specific network interface or IP add
 -  **Protocol Support**: TCP and UDP socket binding
 -  **Real-time**: No app restart needed - works with running applications
 -  **Verbose Logging**: Detailed connection information for debugging
+-  **Debian Package**: Ready-to-install .deb package for Ubuntu/Debian
+-  **Comprehensive Testing**: Complete test suite for all usage scenarios
 
 ## Quick Start
 
 ### Linux
 ```bash
-# Build
+# Build from source
 make clean && make
+
+# Or install pre-built package
+sudo dpkg -i forcebindip_1.0.0_amd64.deb
 
 # List available network interfaces
 ./forcebindip -l
@@ -36,6 +86,9 @@ make clean && make
 
 # Test with sample program
 ./forcebindip -v -4 192.168.1.3 ./test_ipv4
+
+# Run comprehensive tests
+make test-usage
 ```
 
 ### Windows
@@ -141,7 +194,19 @@ curl http://httpbin.org/ip
 
 ## Installation
 
-### Linux
+### Linux - Option 1: Install Pre-built Package (Recommended)
+```bash
+# Download and install the .deb package
+sudo dpkg -i forcebindip_1.0.0_amd64.deb
+
+# Fix any missing dependencies
+sudo apt-get install -f
+
+# Verify installation
+forcebindip -l
+```
+
+### Linux - Option 2: Build from Source
 ```bash
 # Clone and build
 git clone <repository-url>
@@ -152,6 +217,9 @@ make clean && make
 # - forcebindip: Main executable
 # - libforcebindip.so: Hook library
 # - test_ipv4, test_ipv6: Test programs
+
+# Optional: Install system-wide
+sudo make install
 ```
 
 ### Windows
@@ -201,25 +269,83 @@ make clean && make
 ping -I 192.168.1.3 google.com
 ```
 
-## Advanced Usage
+## Testing & Verification
 
-### Multiple Interface Setup
+### Quick Test
 ```bash
-# Route different services through different interfaces
-./forcebindip -i eth0 ./download_script.sh     # Heavy downloads via Ethernet
-./forcebindip -i wlo1 ./api_client.py          # API calls via WiFi
-./forcebindip -i tun0 ./secure_chat.sh         # Secure chat via VPN
+# Test basic functionality
+forcebindip -l                                    # List interfaces
+forcebindip -4 192.168.1.100 curl httpbin.org/ip # Test IP binding
 ```
 
-### Development & Testing
+### Comprehensive Testing
 ```bash
-# Test IPv4 vs IPv6
-./forcebindip -4 192.168.1.3 ./network_test
-./forcebindip -6 2001:db8::1 ./network_test
+# Run all 27 usage scenarios (recommended)
+make test-usage
+# or directly:
+./test-all-usage.sh
 
-# Test different protocols
-./forcebindip -v -4 192.168.1.3 nc -u 8.8.8.8 53    # UDP
-./forcebindip -v -4 192.168.1.3 nc 8.8.8.8 80       # TCP
+# Build and test Debian package
+make test-deb
+
+# Build Debian package only
+make deb
+```
+
+### Test Results Overview
+The comprehensive test suite validates:
+- ✅ **Basic Commands** (help, interface listing)
+- ✅ **IPv4 Binding** (multiple IP addresses)
+- ✅ **IPv6 Binding** (when available)
+- ✅ **Interface Binding** (network adapters)
+- ✅ **Real Applications** (curl, wget, ping, ssh, netcat)
+- ✅ **Error Handling** (invalid inputs)
+- ✅ **Performance** (stress testing)
+
+### Manual Testing Examples
+```bash
+# Test IPv4 binding with verbose output
+./forcebindip -v -4 192.168.1.3 ./test_ipv4
+
+# Test interface binding
+./forcebindip -v -i eth0 ./test_ipv4
+
+# Test with real applications
+./forcebindip -4 192.168.1.100 curl -s httpbin.org/ip
+./forcebindip -i tun0 wget http://example.com
+./forcebindip -v -4 10.0.0.5 ping -c 3 google.com
+```
+
+## Package Management
+
+### Debian Package (.deb)
+```bash
+# Build package
+./build-deb.sh
+
+# Install package
+sudo dpkg -i forcebindip_1.0.0_amd64.deb
+
+# Remove package
+sudo dpkg -r forcebindip
+
+# Package information
+dpkg-deb --info forcebindip_1.0.0_amd64.deb
+```
+
+## Development
+
+### Build System
+```bash
+# Available make targets
+make help
+
+# Key targets:
+make all               # Build everything
+make deb              # Create Debian package
+make test-usage       # Test all usage scenarios
+make install          # Install system-wide
+make clean            # Clean build files
 ```
 
 ## Files Structure
@@ -229,6 +355,7 @@ FBI/
 ├── common/                    # Cross-platform headers
 ├── dll/                       # Windows DLL source code
 ├── forcebindip                # Main Linux executable
+├── forcebindip_1.0.0_amd64.deb # Pre-built Debian package
 ├── injector/                  # Windows injector source
 ├── injector_crossplatform/    # Cross-platform injector
 ├── libforcebindip_simple.c    # Linux hook library source (C)
@@ -240,7 +367,10 @@ FBI/
 ├── test_ipv4                  # IPv4 test executable
 ├── test_ipv6                  # IPv6 test executable
 ├── testv4/                    # Original IPv4 test source
-└── testv6/                    # Original IPv6 test source
+├── testv6/                    # Original IPv6 test source
+├── build-deb.sh               # Debian package builder
+├── test-all-usage.sh          # Comprehensive usage tester
+└── debian/                    # Debian package control files
 ```
 
 ## Detailed Usage Guide
@@ -524,6 +654,7 @@ FBI/
 │   └── network_manager.cpp
 ├── dll/                             # Windows DLL source code
 ├── forcebindip                      # Main Linux executable
+├── forcebindip_1.0.0_amd64.deb      # Pre-built Debian package
 ├── injector/                        # Windows injector source
 ├── injector_crossplatform/          # Cross-platform injector
 │   └── injector.cpp
@@ -539,8 +670,17 @@ FBI/
 ├── test_ipv6                        # IPv6 test executable
 ├── testv4/                          # Original IPv4 test source
 │   └── testv4.cpp
-└── testv6/                          # Original IPv6 test source
-    └── testv6.cpp
+├── testv6/                          # Original IPv6 test source
+│   └── testv6.cpp
+├── build-deb.sh                     # Debian package builder script
+├── test-all-usage.sh                # Comprehensive usage tester
+└── debian/                          # Debian package control files
+    ├── control                      # Package metadata
+    ├── postinst                     # Post-installation script
+    ├── prerm                        # Pre-removal script
+    ├── copyright                    # License information
+    ├── changelog                    # Version history
+    └── forcebindip.1                # Manual page
 ```
 
 ## Contributing
