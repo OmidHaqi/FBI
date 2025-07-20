@@ -1,8 +1,0 @@
-usr/local/bin/forcebindip
-usr/local/lib/libforcebindip.so
-usr/local/bin/test_ipv4
-usr/local/bin/test_ipv6
-usr/local/share/doc/forcebindip/README.md
-usr/local/share/doc/forcebindip/README_FA.md
-usr/local/share/doc/forcebindip/copyright
-usr/local/share/man/man1/forcebindip.1
